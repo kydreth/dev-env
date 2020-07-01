@@ -6,7 +6,7 @@ To get started with minimal instruction, run:
 
 Linux/MacOS, open up the terminal application
 ```shell script
-git clone <path_to_repo>
+git clone https://github.com/kydreth/dev-env.git
 cd dev-env
 ./setup.sh
 
@@ -14,7 +14,7 @@ cd dev-env
 
 Windows, open up the PowerShell application
 ```shell script
-git clone <path_to_repo>
+git clone https://github.com/kydreth/dev-env.git
 cd dev-env
 .\setup.ps1
 
