@@ -1,0 +1,14 @@
+[Unit]
+Description=Jupyter Notebook - Lab
+After=network.target
+
+[Service]
+Type=simple
+User=vagrant
+WorkingDirectory=/vagrant
+ExecStart=/home/vagrant/miniconda/bin/jupyter lab --port 8888
+ExecStop=/home/vagrant/miniconda/bin/jupyter notebook stop 8888
+#Restart=always
+
+[Install]
+WantedBy=multi-user.target

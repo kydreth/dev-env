@@ -1,0 +1,25 @@
+#https://github.com/github/gitignore
+logs
+*.log
+
+#git repos
+virtual-machines/sandbox/repos/
+
+#ide
+.idea
+
+#docker, virtualbox, vagrant
+*.box
+
+#nodejs, angularjs, reactjs
+node_modules/
+jspm_packages/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn
+.yarn-integrity
+.next
+out/
+build/
+dist/

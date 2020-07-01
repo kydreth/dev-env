@@ -1,0 +1,136 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+# plugins:
+# vagrant plugin install vagrant-vbguest; vagrant plugin install vagrant-disksize
+
+$setup_java_gradle = <<SCRIPT
+yum install -y -q -e 0 java-1.8.0-openjdk java-1.8.0-openjdk-devel
+echo export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk/jre >> /etc/environment
+wget -q -nv https://services.gradle.org/distributions/gradle-6.5-bin.zip -P /tmp > /dev/null
+unzip -q /tmp/gradle-6.5-bin.zip -d /opt/gradle
+echo export GRADLE_HOME=/opt/gradle/gradle-6.5 >> /etc/environment
+SCRIPT
+
+$setup_docker = <<SCRIPT
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+usermod -aG docker vagrant
+systemctl enable docker
+systemctl start docker
+curl -L -s https://github.com/docker/compose/releases/download/1.25.1-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose > /dev/null
+chmod +x /usr/local/bin/docker-compose
+SCRIPT
+
+$setup_postgresql = <<SCRIPT
+yum install -y -q -e 0 https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+yum install -y -q -e 0 postgresql12
+docker volume create postgres
+docker network create -d bridge postgresql
+mkdir -p /vagrant/postgresql/data /vagrant/postgresql/logs
+chown -R root:docker /vagrant/postgresql
+cd /vagrant
+cp -R postgresql /home/vagrant
+cp postgresql/postgresql.service /etc/systemd/system/postgresql.service
+systemctl enable postgresql.service
+systemctl start postgresql.service
+SCRIPT
+# psql postgres -U postgres -h localhost
+# password is set in the ./postgresql/docker-compose.yml file in the Vagrantfile directory
+
+$setup_elastic_stack = <<SCRIPT
+docker volume create elasticsearch
+docker network create -d bridge elasticstack
+cd /vagrant
+cp -R elasticstack /home/vagrant
+cp elasticstack/elasticstack.service /etc/systemd/system/elasticstack.service
+systemctl enable elasticstack.service
+systemctl start elasticstack.service
+sleep 1m
+#takes several minutes for elasticsearch.service to come online and respond to `curl -L 127.0.0.1:9200`
+SCRIPT
+
+$setup_node_angular = <<SCRIPT
+curl -sL https://rpm.nodesource.com/setup_10.x | bash -
+yum install -y -q -e 0 nodejs gcc-c++ make
+curl -sL https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo
+rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg
+yum install -y -q -e 0 yarn
+npm install -g @angular/cli
+
+SCRIPT
+
+#https://docs.conda.io/en/latest/miniconda.html
+#sed -i '/^PATH/ s/$/:$HOME\/miniconda\/bin/' /home/vagrant/.bash_profile
+$setup_python_conda = <<SCRIPT
+curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
+sh miniconda.sh -b -p /home/vagrant/miniconda
+rm ./miniconda.sh
+/home/vagrant/miniconda/bin/conda install -y -q jupyterlab
+/home/vagrant/miniconda/bin/conda install -y -q -c conda-forge jupyterlab
+/home/vagrant/miniconda/bin/jupyter labextension install -y @jupyterlab/geojson-extension >>/dev/null
+/home/vagrant/miniconda/bin/jupyter lab --generate-config
+echo "
+c.NotebookApp.ip = '0.0.0.0' # listen on all IPs
+c.NotebookApp.token = ''     # disable authentication
+c.NotebookApp.allow_origin = '*' # allow access from anywhere
+c.NotebookApp.disable_check_xsrf = True # allow cross-site requests
+" >> /home/vagrant/.jupyter/jupyter_notebook_config.py
+sudo cp /vagrant/conda/jupyterlab.service /etc/systemd/system/jupyterlab.service
+sudo systemctl enable jupyterlab.service
+sudo systemctl start jupyterlab.service
+
+SCRIPT
+
+#https://www.jetbrains.com/idea/download/#section=linux
+#https://www.eclipse.org/downloads/packages/
+#TODO: menu entries
+#IDEA: IDE menu run "Tools -> Generate Desktop Entry"
+$setup_ides = <<SCRIPT
+curl -sL "https://download.jetbrains.com/idea/ideaIC-2020.1.2.tar.gz" -O
+tar -xzf ideaIC-2020.1.2.tar.gz -C /opt
+ln -s /opt/idea-IC-201.7846.76 /opt/ideaIC
+ln -s /opt/ideaIC/bin/idea.sh /usr/bin/idea
+
+curl -sL "https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/2020-03/R/eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz&r=1" -o eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz
+tar -zxf eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz -C /opt
+ln -s /opt/eclipse/eclipse /usr/bin/eclipse
+
+SCRIPT
+
+#/usr/share/applications/eclipseide.desktop
+$menu_eclipse = <<EOF
+[Desktop Entry]
+Encoding=UTF-8
+Name=Eclipse IDE
+Comment=Eclipse IDE
+Exec=/usr/bin/eclipse
+Icon=/opt/eclipse/icon.xpm
+Categories=Application;Development;Java;IDE
+Version=1.0
+Type=Application
+Terminal=0
+
+EOF
+
+Vagrant.configure("2") do |config|
+	config.vm.box = "base"
+	config.vm.hostname = "dev"
+	config.vm.provider "virtualbox" do |v|
+		v.name="dev"
+		v.memory=8192
+		v.cpus=2
+	end
+
+	config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+	config.vm.provision "shell", inline: $setup_java_gradle
+	config.vm.provision "shell", inline: $setup_docker
+	config.vm.provision "shell", inline: $setup_postgresql
+	config.vm.provision "shell", inline: $setup_elastic_stack
+	config.vm.provision "shell", inline: $setup_node_angular
+	config.vm.provision "shell", inline: $setup_python_conda, privileged: false
+	config.vm.provision "shell", inline: $setup_ides
+	#TODO: redis port 6379
+	#TODO: https://linuxize.com/post/how-to-install-visual-studio-code-on-centos-7/
+
+end
