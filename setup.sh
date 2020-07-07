@@ -35,8 +35,8 @@ Selection: " local
         # TODO: detect if vagrant is installed
         # TODO: detect if VirtualBox is installed
         cd virtual-machines/vagrant/centos
-        cd base && vagrant up && vagrant package --output base.box && vagrant box add --name base base.box && vagrant destroy -f && rm base.box
-        cd ../dev && vagrant up && vagrant package --output dev.box && vagrant box add --name dev dev.box && vagrant destroy -f && rm dev.box
+        cd base && vagrant up && vagrant package --output base.box && vagrant box add --name base base.box && vagrant halt
+        cd ../dev && vagrant up && vagrant package --output dev.box && vagrant box add --name dev dev.box && vagrant halt
         cd ../sandbox && vagrant up
         printf "open VirtualBox and login with user/password vagrant/vagrant or type vagrant ssh\n"
       elif [ $local -eq '3' ]; then

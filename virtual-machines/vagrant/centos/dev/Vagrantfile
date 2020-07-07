@@ -9,6 +9,7 @@ yum install -y -q -e 0 java-1.8.0-openjdk java-1.8.0-openjdk-devel
 echo export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk/jre >> /etc/environment
 wget -q -nv https://services.gradle.org/distributions/gradle-6.5-bin.zip -P /tmp > /dev/null
 unzip -q /tmp/gradle-6.5-bin.zip -d /opt/gradle
+rm /tmp/gradle-6.5-bin.zip
 echo export GRADLE_HOME=/opt/gradle/gradle-6.5 >> /etc/environment
 SCRIPT
 
@@ -82,6 +83,53 @@ sudo systemctl start jupyterlab.service
 
 SCRIPT
 
+$config_git = <<SCRIPT
+git config --global core.autocrlf input
+
+SCRIPT
+
+#https://github.com/spring-guides/gs-rest-service
+$setup_git_repo_java_spring = <<SCRIPT
+cd /home/vagrant
+git clone --quiet https://github.com/spring-guides/gs-rest-service.git
+cd gs-rest-service/complete
+sudo ./gradlew build
+
+SCRIPT
+#TODO: make service
+#./gradlew bootRun &
+# access via http://localhost:8080/greeting
+
+$setup_git_repo_angularjs = <<SCRIPT
+cd /home/vagrant
+curl -sL "https://angular.io/generated/zips/toh-pt6/toh-pt6.zip" -O
+unzip -q toh-pt6.zip -d tourofheroes
+cd tourofheroes
+npm install -s -n >>/dev/null
+npm run -s build >>/dev/null
+cd /vagrant
+sudo cp angularjs.service /etc/systemd/system/angularjs.service
+sudo systemctl enable angularjs.service
+sudo systemctl start angularjs.service
+
+SCRIPT
+
+
+#https://github.com/creativetimofficial/nextjs-material-kit.git
+#https://github.com/clintonwoo/hackernews-react-graphql
+$setup_git_repo_reactjs = <<SCRIPT
+cd /home/vagrant
+git clone --quiet https://github.com/creativetimofficial/nextjs-material-kit.git
+cd nextjs-material-kit
+npm install -s -n >>/dev/null
+npm run -s build >>/dev/null
+cd /vagrant
+sudo cp reactjs.service /etc/systemd/system/reactjs.service
+sudo systemctl enable reactjs.service
+sudo systemctl start reactjs.service
+
+SCRIPT
+
 #https://www.jetbrains.com/idea/download/#section=linux
 #https://www.eclipse.org/downloads/packages/
 #TODO: menu entries
@@ -89,11 +137,13 @@ SCRIPT
 $setup_ides = <<SCRIPT
 curl -sL "https://download.jetbrains.com/idea/ideaIC-2020.1.2.tar.gz" -O
 tar -xzf ideaIC-2020.1.2.tar.gz -C /opt
+rm ideaIC-2020.1.2.tar.gz
 ln -s /opt/idea-IC-201.7846.76 /opt/ideaIC
 ln -s /opt/ideaIC/bin/idea.sh /usr/bin/idea
 
 curl -sL "https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/2020-03/R/eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz&r=1" -o eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz
 tar -zxf eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz -C /opt
+rm eclipse-java-2020-03-R-linux-gtk-x86_64.tar.gz
 ln -s /opt/eclipse/eclipse /usr/bin/eclipse
 
 SCRIPT
@@ -113,6 +163,12 @@ Terminal=0
 
 EOF
 
+$os_cleanup = <<SCRIPT
+yum clean all
+cat /dev/null > ~/.bash_history && history -c && exit
+
+SCRIPT
+
 Vagrant.configure("2") do |config|
 	config.vm.box = "base"
 	config.vm.hostname = "dev"
@@ -129,7 +185,12 @@ Vagrant.configure("2") do |config|
 	config.vm.provision "shell", inline: $setup_elastic_stack
 	config.vm.provision "shell", inline: $setup_node_angular
 	config.vm.provision "shell", inline: $setup_python_conda, privileged: false
+	config.vm.provision "shell", inline: $config_git, privileged: false
+	config.vm.provision "shell", inline: $setup_git_repo_java_spring, privileged: false
+	config.vm.provision "shell", inline: $setup_git_repo_angularjs, privileged: false
+	config.vm.provision "shell", inline: $setup_git_repo_reactjs, privileged: false
 	config.vm.provision "shell", inline: $setup_ides
+	config.vm.provision "shell", inline: $os_cleanup
 	#TODO: redis port 6379
 	#TODO: https://linuxize.com/post/how-to-install-visual-studio-code-on-centos-7/
 

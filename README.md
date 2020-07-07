@@ -4,15 +4,21 @@
 This will initialize a software development environment on your computer or in the cloud.
 To get started with minimal instruction, run:
 
-Linux/MacOS, open up the terminal application
+### Linux/MacOS
+* Install Vagrant (Linux | MacOS)
+* Install VirtualBox (Linux | MacOS)
+* open up the terminal application
 ```shell script
 git clone https://github.com/kydreth/dev-env.git
-cd dev-env
-./setup.sh
+cd dev-env/virtual-machines/vagrant/centos/sandbox
+vagrant up
 
 ```
 
-Windows, open up the PowerShell application
+### Windows
+* Install Vagrant
+* Install VirtualBox 
+* open up the PowerShell application
 ```shell script
 git clone https://github.com/kydreth/dev-env.git
 cd dev-env
