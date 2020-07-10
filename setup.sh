@@ -28,6 +28,7 @@ Selection: " deployment
 				case "$local" in
 					1)
 						printf "Automated detection of an OS is currently unsupported\n"
+						break
 					;;
 					2)
         printf "Windows selected\n"
