@@ -17,7 +17,7 @@ do
 1. Your local computer (press enter)
 2. A cloud provider such as AWS, GCP, Azure (press 2, then enter)
 Selection: " deployment
-  if [[ $deployment -eq '1' ]] || [[ $deployment -eq '' ]]; then
+  if [[ $deployment == 1 ]] || [[ $deployment == '' ]]; then
     printf "Deploying to local computer\n"
     while ! [[ "$local" =~ ^(1|2|3|4|5|)$ ]]
     do
@@ -28,9 +28,9 @@ Selection: " deployment
 4. Linux, RHEL/CentOS
 5. Linux, Debian/Ubuntu
 Selection: " local
-      if [[ $local -eq '1' ]]; then
+      if [[ $local == 1 ]]; then
         printf "Automated detection of an OS is currently unsupported\n"
-      elif [ $local -eq '2' ]]; then
+      elif [ $local == 2 ]]; then
         printf "Windows selected\n"
         # TODO: detect if vagrant is installed
         # TODO: detect if VirtualBox is installed
@@ -39,18 +39,18 @@ Selection: " local
         cd ../dev && vagrant up && vagrant package --output dev.box && vagrant box add --name dev dev.box && vagrant halt
         cd ../sandbox && vagrant up
         printf "open VirtualBox and login with user/password vagrant/vagrant or type vagrant ssh\n"
-      elif [[ $local -eq '3' ]]; then
+      elif [[ $local == 3 ]]; then
         printf "MacOS is currently unsupported\n"
-      elif [[ $local -eq '4' ]]; then
+      elif [[ $local == 4 ]]; then
         printf "Linux, RHEL/CentOS is currently unsupported\n"
-      elif [[ $local -eq '5' ]]; then
+      elif [[ $local == 5 ]]; then
         printf "Linux, Debian/Ubuntu is currently unsupported\n"
       else
         printf "Unknown configuration. Please specify which operating system\n"
       fi
     done
 
-  elif [[ deployment -eq '2' ]]; then
+  elif [[ deployment == 2 ]]; then
     cloud=1
     echo "Deploying to cloud environment unsupported, this is a planned feature. Supporting providers:
 * Amazon Web Services (AWS): https://aws.amazon.com/
