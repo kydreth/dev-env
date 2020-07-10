@@ -69,4 +69,4 @@ Selection: " deployment
 		;;
 	esac
 done
-echo ''
+echo
