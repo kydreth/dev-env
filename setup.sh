@@ -13,7 +13,7 @@ gcp=0
 azure=0
 while [[ $deployment != '2' ]] && [[ $deployment != '1' ]] && [[ $deployment != '' ]]
 do
-  read -p "Where will this software deployment be deployed to?
+  read -r -p "Where will this software deployment be deployed to?
 1. Your local computer (press enter)
 2. A cloud provider such as AWS, GCP, Azure (press 2, then enter)
 Selection: " deployment
