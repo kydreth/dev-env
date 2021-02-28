@@ -1,0 +1,236 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+# plugins:
+# vagrant plugin install vagrant-vbguest; vagrant plugin install vagrant-disksize
+
+$setup_os = <<SCRIPT
+apt-get update -y -q
+apt-get install -y -q curl git vim wget bzip2 zip unzip nano less dnsutils telnet
+touch /home/vagrant/.bash_profile
+echo -e "PATH=\"\$HOME/bin\${PATH:+:\${PATH}}\"\n" >> /home/vagrant/.bash_profile
+
+SCRIPT
+
+$setup_java_gradle = <<SCRIPT
+apt-get install -y -q openjdk-11-jre
+echo export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 >> /etc/environment
+wget -q -nv https://services.gradle.org/distributions/gradle-6.5-bin.zip -P /tmp > /dev/null
+unzip -q /tmp/gradle-6.5-bin.zip -d /opt/gradle
+rm /tmp/gradle-6.5-bin.zip
+echo export GRADLE_HOME=/opt/gradle/gradle-6.5 >> /etc/environment
+SCRIPT
+
+$setup_docker = <<SCRIPT
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+usermod -aG docker vagrant
+systemctl enable docker
+systemctl start docker
+curl -L -s https://github.com/docker/compose/releases/download/1.25.1-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose > /dev/null
+chmod +x /usr/local/bin/docker-compose
+SCRIPT
+
+$setup_postgresql = <<SCRIPT
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo apt-get update
+sudo apt-get -y install postgresql
+
+docker volume create postgres
+docker network create -d bridge postgresql
+mkdir -p /vagrant/postgresql/data /vagrant/postgresql/logs
+chown -R root:docker /vagrant/postgresql
+cd /vagrant
+cp -R postgresql /home/vagrant
+cp postgresql/postgresql.service /etc/systemd/system/postgresql.service
+systemctl enable postgresql.service
+systemctl start postgresql.service
+SCRIPT
+# psql postgres -U postgres -h localhost
+# password is set in the ./postgresql/docker-compose.yml file in the Vagrantfile directory
+
+$setup_elastic_stack = <<SCRIPT
+docker volume create elasticsearch
+docker network create -d bridge elasticstack
+cd /vagrant
+cp -R elasticstack /home/vagrant
+cp elasticstack/elasticstack.service /etc/systemd/system/elasticstack.service
+systemctl enable elasticstack.service
+systemctl start elasticstack.service
+sleep 1m
+#takes several minutes for elasticsearch.service to come online and respond to `curl -L 127.0.0.1:9200`
+SCRIPT
+
+$setup_node_angular = <<SCRIPT
+apt-get install -y -q nodejs npm yarn
+npm install -g @angular/cli
+SCRIPT
+
+#https://docs.conda.io/en/latest/conda.html
+#https://docs.conda.io/en/latest/miniconda.html
+#sed -i '/^PATH/ s/$/:$HOME\/miniconda\/bin/' /home/vagrant/.bash_profile
+#TODO: optional miniconda vs full conda
+$setup_python_conda = <<SCRIPT
+CONDA_ENV=/home/vagrant/conda/bin/
+curl -sL https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh -o conda.sh
+sh conda.sh -b -p /home/vagrant/conda
+rm ./conda.sh
+sed -i '/^PATH/ s/$/:$HOME\/conda\/bin/' /home/vagrant/.bash_profile
+sudo cp /vagrant/jupyter/jupyterlab.conda.service /etc/systemd/system/jupyterlab.conda.service
+sudo systemctl enable jupyterlab.conda.service
+sudo systemctl start jupyterlab.conda.service
+
+#curl -sL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o miniconda.sh
+#sh miniconda.sh -b -p /home/vagrant/miniconda
+#rm ./miniconda.sh
+#cd /home/vagrant/miniconda/bin/
+#sudo cp /vagrant/jupyter/jupyterlab.miniconda.service /etc/systemd/system/jupyterlab.miniconda.service
+#sudo systemctl enable jupyterlab.miniconda.service
+#sudo systemctl start jupyterlab.miniconda.service
+
+/home/vagrant/conda/bin/conda install -y -q jupyterlab
+/home/vagrant/conda/bin/conda install -y -q -c conda-forge jupyterlab
+/home/vagrant/conda/bin/jupyter labextension install -y @jupyterlab/geojson-extension >>/dev/null
+/home/vagrant/conda/bin/jupyter lab --generate-config
+echo "
+c.NotebookApp.ip = '0.0.0.0' # listen on all IPs
+c.NotebookApp.token = ''     # disable authentication
+c.NotebookApp.allow_origin = '*' # allow access from anywhere
+c.NotebookApp.disable_check_xsrf = True # allow cross-site requests
+" >> /home/vagrant/.jupyter/jupyter_notebook_config.py
+
+SCRIPT
+#https://github.com/heremaps/pptk#build
+$setup_python_pptk = <<SCRIPT
+cd /home/vagrant
+git clone https://github.com/heremaps/pptk.git
+cd pptk
+mkdir build
+cd build
+cmake -G "NMake Makefiles" ../
+nmake
+/home/vagrant/conda/bin/python setup.py bdist_wheel
+/home/vagrant/conda/bin/pip install dist\<.whl file>
+
+SCRIPT
+
+$config_git = <<SCRIPT
+git config --global core.autocrlf input
+SCRIPT
+
+#https://github.com/spring-guides/gs-rest-service
+$setup_git_repo_java_spring = <<SCRIPT
+cd /home/vagrant
+git clone --quiet https://github.com/spring-guides/gs-rest-service.git
+cd gs-rest-service/complete
+sudo ./gradlew build
+SCRIPT
+#TODO: make service
+#./gradlew bootRun &
+# access via http://localhost:8080/greeting
+
+$setup_git_repo_angularjs = <<SCRIPT
+cd /home/vagrant
+curl -sL "https://angular.io/generated/zips/toh-pt6/toh-pt6.zip" -O
+unzip -q toh-pt6.zip -d tourofheroes
+cd tourofheroes
+npm install -s -n >>/dev/null
+npm run -s build >>/dev/null
+cd /vagrant
+sudo cp angularjs.service /etc/systemd/system/angularjs.service
+sudo systemctl enable angularjs.service
+sudo systemctl start angularjs.service
+SCRIPT
+
+
+#https://github.com/creativetimofficial/nextjs-material-kit.git
+#https://github.com/clintonwoo/hackernews-react-graphql
+$setup_git_repo_reactjs = <<SCRIPT
+cd /home/vagrant
+git clone --quiet https://github.com/creativetimofficial/nextjs-material-kit.git
+cd nextjs-material-kit
+npm install -s -n >>/dev/null
+npm run -s build >>/dev/null
+cd /vagrant
+sudo cp reactjs.service /etc/systemd/system/reactjs.service
+sudo systemctl enable reactjs.service
+sudo systemctl start reactjs.service
+SCRIPT
+
+$setup_nginx = <<SCRIPT
+cd /vagrant
+cp -R nginx /home/vagrant
+cp nginx/nginx.service /etc/systemd/system/nginx.service
+systemctl enable nginx.service
+systemctl start nginx.service
+SCRIPT
+
+$setup_cartodb = <<SCRIPT
+cd /vagrant
+cp -R cartodb /home/vagrant
+cp cartodb/cartodb.service /etc/systemd/system/cartodb.service
+systemctl enable cartodb.service
+systemctl start cartodb.service
+#bash -c "docker exec -ti cartodb bash -c /cartodb/script/fill_geocoder.sh" &
+SCRIPT
+
+$os_cleanup = <<SCRIPT
+apt-get clean all
+cat /dev/null > ~/.bash_history && history -c && exit
+SCRIPT
+
+Vagrant.configure("2") do |config|
+	config.vm.box = "ubuntu/focal64" #version v20210224.0.0
+	config.vm.hostname = "ubuntu"
+	config.vm.provider "virtualbox" do |v|
+		v.name="ubuntu"
+		v.memory=8192
+		v.cpus=2
+        v.customize ["modifyvm", :id, "--vram", "48"]
+        #v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+        #v.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
+       # v.gui = true # Display the VirtualBox GUI when booting the machine. In virtualbox while VM is off, set Display Graphics Controller to VBoxSVGA, and enable all acceleration options
+
+	end
+
+	config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+	
+	config.vm.provision "shell", inline: $setup_os
+	
+	config.vm.provision "shell", inline: $setup_java_gradle
+	config.vm.provision "shell", inline: $setup_docker
+	config.vm.provision "shell", inline: $setup_postgresql
+	config.vm.provision "shell", inline: $setup_elastic_stack
+	#config.vm.provision "shell", inline: $setup_node_angular
+	config.vm.provision "shell", inline: $setup_python_conda, privileged: false
+	#config.vm.provision "shell", inline: $config_git, privileged: false
+	#config.vm.provision "shell", inline: $setup_git_repo_java_spring, privileged: false
+	#config.vm.provision "shell", inline: $setup_git_repo_angularjs, privileged: false
+	#config.vm.provision "shell", inline: $setup_git_repo_reactjs, privileged: false
+	#config.vm.provision "shell", inline: $setup_ides
+	
+	#TODO: use nginx and <service>.localhost
+	#config.vm.provision "shell", inline: $setup_nginx
+	#config.vm.provision "shell", inline: $setup_cartodb
+
+	config.vm.provision "shell", inline: $os_cleanup
+	
+	#config.vm.network "private_network", ip: "10.0.0.0"
+	#config.vm.network "forwarded_port", guest: 80, host: 80, id: "http"
+	#config.vm.network "forwarded_port", guest: 443, host: 443, id: "https"
+	config.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "127.0.0.1", id: "tomcat"
+	config.vm.network "forwarded_port", guest: 8888, host: 8888, host_ip: "127.0.0.1", id: "Jupyter Notebook / Lab"
+	config.vm.network "forwarded_port", guest: 5432, host: 5432, host_ip: "127.0.0.1", id: "postgresql db service"
+	#config.vm.network "forwarded_port", guest: 8081, host: 8081, host_ip: "127.0.0.1", id: "postgresql adminer web"
+	config.vm.network "forwarded_port", guest: 8082, host: 8082, host_ip: "127.0.0.1", id: "postgresql pgadmin4 web"
+	config.vm.network "forwarded_port", guest: 9200, host: 9200, host_ip: "127.0.0.1", id: "elasticstack elasticsearch service"
+	config.vm.network "forwarded_port", guest: 9200, host: 9300, host_ip: "127.0.0.1", id: "elasticstack nodes service"
+	config.vm.network "forwarded_port", guest: 5601, host: 5601, host_ip: "127.0.0.1", id: "elasticstack kibana web"
+	config.vm.network "forwarded_port", guest: 4200, host: 4200, host_ip: "127.0.0.1", id: "nodejs angularjs web"
+	config.vm.network "forwarded_port", guest: 3000, host: 3000, host_ip: "127.0.0.1", id: "nodejs reactjs web"
+	config.vm.network "forwarded_port", guest: 80, host: 80, host_ip: "127.0.0.1", id: "cartodb"
+
+	#vagrant virtualbox errors found: /var/log/vboxadd-setup.log
+
+end
