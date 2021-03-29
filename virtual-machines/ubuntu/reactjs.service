@@ -1,0 +1,13 @@
+[Unit]
+Description=NodeJS ReactJS Dev/Test App Service, don't run this for a production environment
+After=network.target
+
+[Service]
+Type=simple
+User=vagrant
+WorkingDirectory=/home/vagrant/nextjs-material-kit
+ExecStart=/usr/bin/npm run start
+#Restart=always
+
+[Install]
+WantedBy=multi-user.target
