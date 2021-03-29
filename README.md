@@ -4,25 +4,16 @@
 This will initialize a software development environment on your computer or in the cloud.
 To get started with minimal instruction, run:
 
-### Linux/MacOS
-* Install Vagrant (Linux | MacOS)
-* Install VirtualBox (Linux | MacOS)
-* open up the terminal application
+### Linux/MacOS/Windows
+* Install VirtualBox ([Linux](https://www.virtualbox.org/wiki/Linux_Downloads) | [MacOS](https://download.virtualbox.org/virtualbox/6.1.18/VirtualBox-6.1.18-142142-OSX.dmg) | [Windows](https://download.virtualbox.org/virtualbox/6.1.18/VirtualBox-6.1.18-142142-Win.exe))
+* [Install Vagrant](https://www.vagrantup.com/docs/installation)
+* Linux/MacOs: open up the terminal application, [install git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+* Windows: [install git with git bash](https://git-scm.com/download/win), then open git bash
 ```shell script
+vagrant plugin install vagrant-vbguest
 git clone https://github.com/kydreth/dev-env.git
-cd dev-env/virtual-machines/vagrant/centos/sandbox
+cd dev-env/virtual-machines/ubuntu
 vagrant up
-
-```
-
-### Windows
-* Install Vagrant
-* Install VirtualBox 
-* open up the PowerShell application
-```shell script
-git clone https://github.com/kydreth/dev-env.git
-cd dev-env
-.\setup.ps1
 
 ```
 

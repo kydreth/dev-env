@@ -89,6 +89,7 @@ sudo systemctl start jupyterlab.conda.service
 #sudo systemctl enable jupyterlab.miniconda.service
 #sudo systemctl start jupyterlab.miniconda.service
 
+/home/vagrant/conda/bin/conda install -y -q pandoc
 /home/vagrant/conda/bin/conda install -y -q jupyterlab
 /home/vagrant/conda/bin/conda install -y -q -c conda-forge jupyterlab
 /home/vagrant/conda/bin/jupyter labextension install -y @jupyterlab/geojson-extension >>/dev/null
@@ -99,8 +100,8 @@ c.NotebookApp.token = ''     # disable authentication
 c.NotebookApp.allow_origin = '*' # allow access from anywhere
 c.NotebookApp.disable_check_xsrf = True # allow cross-site requests
 " >> /home/vagrant/.jupyter/jupyter_notebook_config.py
-
 SCRIPT
+
 #https://github.com/heremaps/pptk#build
 $setup_python_pptk = <<SCRIPT
 cd /home/vagrant
@@ -166,31 +167,25 @@ systemctl enable nginx.service
 systemctl start nginx.service
 SCRIPT
 
-$setup_cartodb = <<SCRIPT
-cd /vagrant
-cp -R cartodb /home/vagrant
-cp cartodb/cartodb.service /etc/systemd/system/cartodb.service
-systemctl enable cartodb.service
-systemctl start cartodb.service
-#bash -c "docker exec -ti cartodb bash -c /cartodb/script/fill_geocoder.sh" &
-SCRIPT
-
 $os_cleanup = <<SCRIPT
 apt-get clean all
 cat /dev/null > ~/.bash_history && history -c && exit
 SCRIPT
 
 Vagrant.configure("2") do |config|
-	config.vm.box = "ubuntu/focal64" #version v20210224.0.0
-	config.vm.hostname = "ubuntu"
+#TODO: Multi Machine
+	config.vm.box = "ubuntu/focal64"
+	#config.vm.box_version = "v20210224.0.0"
+	#config.vm.box = "kydreth/dev-env/ubuntu/focal64"
+	config.vm.hostname = "dev-env-ubuntu-20-04-lts"
 	config.vm.provider "virtualbox" do |v|
-		v.name="ubuntu"
+		v.name="dev-env-ubuntu-20-04-lts"
 		v.memory=8192
 		v.cpus=2
-        v.customize ["modifyvm", :id, "--vram", "48"]
-        #v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
-        #v.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
-       # v.gui = true # Display the VirtualBox GUI when booting the machine. In virtualbox while VM is off, set Display Graphics Controller to VBoxSVGA, and enable all acceleration options
+		v.customize ["modifyvm", :id, "--vram", "48"]
+		#v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+		#v.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
+		#v.gui = true # Display the VirtualBox GUI when booting the machine. In virtualbox while VM is off, set Display Graphics Controller to VBoxSVGA, and enable all acceleration options
 
 	end
 
@@ -212,7 +207,6 @@ Vagrant.configure("2") do |config|
 	
 	#TODO: use nginx and <service>.localhost
 	#config.vm.provision "shell", inline: $setup_nginx
-	#config.vm.provision "shell", inline: $setup_cartodb
 
 	config.vm.provision "shell", inline: $os_cleanup
 	
@@ -229,7 +223,6 @@ Vagrant.configure("2") do |config|
 	config.vm.network "forwarded_port", guest: 5601, host: 5601, host_ip: "127.0.0.1", id: "elasticstack kibana web"
 	config.vm.network "forwarded_port", guest: 4200, host: 4200, host_ip: "127.0.0.1", id: "nodejs angularjs web"
 	config.vm.network "forwarded_port", guest: 3000, host: 3000, host_ip: "127.0.0.1", id: "nodejs reactjs web"
-	config.vm.network "forwarded_port", guest: 80, host: 80, host_ip: "127.0.0.1", id: "cartodb"
 
 	#vagrant virtualbox errors found: /var/log/vboxadd-setup.log
 

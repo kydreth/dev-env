@@ -1,0 +1,26 @@
+#Elastic Stack https://www.elastic.co/guide/en/elastic-stack-get-started/current/get-started-docker.html
+version: '2.2'
+services:
+# docker exec -ti <carto docker container id> bash -c /cartodb/script/fill_geocoder.sh
+  cartodb.localhost:
+    image: sverhoeven/cartodb
+    container_name: cartodb.localhost
+    restart: always
+    environment:
+      - discovery.type=single-node
+    volumes:
+      - pgdata:/var/lib/postgresql 
+    ports:
+      - 80:80
+    environment:
+      - CARTO_HOSTNAME:"cartodb.localhost"
+    networks:
+      - cartodb
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  cartodb:
+    driver: bridge
